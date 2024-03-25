@@ -1,0 +1,25 @@
+﻿@page
+@model SearchModel
+@using XPage = Relay.InteractionModel.Page
+@{
+    ViewData["Title"] = Model.Recipes.Search;
+}
+
+<header class="d-flex justify-content-between">
+    <h6>
+        Found @Model.Recipes.FilterCount recipe@(Model.Recipes.FilterCount != 1 ? "s" : "") <small>(@Model.SearchDuration.ToPrettyFormat())</small>
+    </h6>
+    <h6>@Model.Recipes.TotalCount recipe@(Model.Recipes.TotalCount != 1 ? "s" : "") total</h6>
+</header>
+<hr />
+
+@foreach (var recipe in Model.Recipes)
+{
+    <div class="clearfix search-result">
+        <h4><a asp-page="Index" asp-route-id="@recipe.Id">@recipe.Name</a></h4>
+        <small class="text-success">@recipe.Link</small>
+        <p>@recipe.Description</p>
+    </div>
+}
+
+@await Html.PartialAsync("~/Pages/Shared/_Pagination.cshtml", Model.Recipes)

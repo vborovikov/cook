@@ -1,0 +1,96 @@
+﻿@using Relay.InteractionModel
+@model IPage<object>
+
+@{
+    var routeData = Context.Request.Query.ToDictionary(x => x.Key, x => x.Value.ToString());
+    routeData.Remove("p");
+
+    var pageNumber = Model.GetPageNumber();
+    var lastPageNumber = Math.Max(Model.FilterCount / Model.TakeCount, Page.FirstPageNumber);
+    var isFirst = pageNumber == Page.FirstPageNumber;
+    var isLast = pageNumber == lastPageNumber;
+    var firstDis = isFirst ? "disabled" : string.Empty;
+    var LastDis = isLast ? "disabled" : string.Empty;
+    var minPageNumber = 2;
+    var maxPageNumber = 5;
+
+    if (lastPageNumber <= 7)
+    {
+        maxPageNumber = lastPageNumber - 1;
+    }
+    else if (pageNumber >= 5)
+    {
+        if (pageNumber + 3 >= lastPageNumber)
+        {
+            maxPageNumber = lastPageNumber - 1;
+            minPageNumber = lastPageNumber - 4;
+        }
+        else
+        {
+            minPageNumber = pageNumber - 2;
+            maxPageNumber = pageNumber + 2;
+        }
+    }
+}
+
+@if (lastPageNumber > Page.FirstPageNumber)
+{
+    <nav>
+        <ul class="pagination pagination-sm">
+            <li class="page-item @firstDis">
+                <a class="page-link" asp-all-route-data="routeData" asp-route-p="@(pageNumber - 1)">&lsaquo;</a>
+            </li>
+
+            @if (isFirst)
+            {
+                <li class="page-item active"><span class="page-link">1</span></li>
+            }
+            else
+            {
+                <li class="page-item"><a class="page-link" asp-all-route-data="routeData" asp-route-p="1">1</a></li>
+            }
+
+            @if (lastPageNumber > 7 && pageNumber >= 5)
+            {
+                <li class="page-item disabled">
+                    <span class="page-link">&hellip;</span>
+                </li>
+            }
+            
+            @for (int i = minPageNumber; i <= maxPageNumber; i++)
+            {
+                if (i == pageNumber)
+                {
+                    <li class="page-item active"><span class="page-link">@i</span></li>
+                }
+                else
+                {
+                    <li class="page-item"><a class="page-link" asp-all-route-data="routeData" asp-route-p="@i">@i</a></li>
+                }
+            }
+            
+            @if (lastPageNumber > 7 && !(pageNumber > lastPageNumber - 4))
+            {
+                <li class="page-item disabled">
+                    <span class="page-link">&hellip;</span>
+                </li>
+            }
+
+            @if (lastPageNumber > 1)
+            {
+                @if (isLast)
+                {
+                    <li class="page-item active"><span class="page-link">@lastPageNumber</span></li>
+                }
+                else
+                {
+                    <li class="page-item"><a class="page-link" asp-all-route-data="routeData" asp-route-p="@lastPageNumber">@lastPageNumber</a></li>
+                }
+            }
+
+            <li class="page-item @LastDis">
+                <a class="page-link" asp-all-route-data="routeData" asp-route-p="@(pageNumber + 1)">&rsaquo;</a>
+            </li>
+        </ul>
+    </nav>
+}

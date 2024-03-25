@@ -1,0 +1,109 @@
+﻿@page
+@model EditModel
+@{
+    ViewData["Title"] = Model.Recipe.Name;
+}
+
+<div class="bg-white p-4 shadow">
+    <form method="post">
+        <input asp-for="Recipe.Id" type="hidden">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+        <fieldset class="form-group">
+            <legend>Description</legend>
+            <div class="d-flex justify-content-between">
+                <div class="input-group me-3">
+                    <span class="input-group-text mdi mdi-silverware-fork-knife"></span>
+                    <input asp-for="Recipe.Name" class="form-control" type="text">
+                    <button id="titleCaseBtn" type="button" class="btn btn-outline-secondary"
+                            data-input-id="@Html.IdFor(m => m.Recipe.Name)">
+                        <i class="bi bi-type"></i>
+                    </button>
+                </div>
+                <span asp-validation-for="Recipe.Name" class="text-danger"></span>
+                <button id="justifyBtn" type="button" class="btn btn-outline-primary align-self-center"
+                        data-input-id="@Html.IdFor(m => m.Recipe.Description)">
+                    <i class="bi bi-justify"></i>
+                </button>
+            </div>
+            <textarea asp-for="Recipe.Description" rows="3" type="text" class="form-control mt-1" placeholder="Description"></textarea>
+            <span asp-validation-for="Recipe.Description" class="text-danger"></span>
+        </fieldset>
+        <fieldset class="form-group mt-3">
+            <legend>Ingredients</legend>
+            @for (var i = 0; i != Model.Recipe.Ingredients.Length; ++i)
+            {
+                if (i != 0)
+                {
+                    <hr />
+                }
+                <div class="d-flex mb-3">
+                    <div class="row flex-grow-1 me-1">
+                        <input asp-for="Recipe.Ingredients[i].Id" type="hidden">
+                        @for (var j = 0; j != Model.Recipe.Ingredients[i].Foods.Length; ++j)
+                        {
+                            <input asp-for="Recipe.Ingredients[i].Foods[j].Id" type="hidden">
+                            <input asp-for="Recipe.Ingredients[i].Foods[j].Name" type="hidden">
+                        }
+                        <div class="col-6 mb-1">
+                            <div class="input-group">
+                                <span class="input-group-text mdi mdi-bowl-mix-outline"></span>
+                                <input asp-for="Recipe.Ingredients[i].Description" class="form-control" type="text">
+                            </div>
+                            <span asp-validation-for="Recipe.Ingredients[i].Description" class="text-danger"></span>
+                        </div>
+                        <div class="col-6 mb-1">
+                            <select asp-for="Recipe.Ingredients[i].FoodIds" class="form-select" multiple
+                                asp-items="@Model.Recipe.Ingredients[i].FoodList"
+                                    data-server="@Url.Page("Edit")" data-query-param="name" data-live-server="true"
+                                    data-server-params='{"handler": "Foods", "id": "@(Model.Recipe.Ingredients[i].Id)"}'
+                                    data-value-field="Id" data-label-field="Name"
+                                    data-allow-new="true" data-allow-clear="true" data-max="3">
+                                <option disabled hidden value="">Foods</option>
+                            </select>
+                            <span asp-validation-for="Recipe.Ingredients[i].FoodIds" class="text-danger"></span>
+                        </div>
+                        <div class="col-4">
+                            <div class="input-group">
+                                <span class="input-group-text mdi mdi-counter"></span>
+                                <input asp-for="Recipe.Ingredients[i].Number" class="form-control" placeholder="Number" type="text">
+                            </div>
+                            <span asp-validation-for="Recipe.Ingredients[i].Number" class="text-danger"></span>
+                        </div>
+                        <div class="col-4">
+                            <div class="input-group">
+                                <span class="input-group-text mdi mdi-scale"></span>
+                                <input asp-for="Recipe.Ingredients[i].Quantity" class="form-control" placeholder="Quantity" type="text">
+                            </div>
+                            <span asp-validation-for="Recipe.Ingredients[i].Quantity" class="text-danger"></span>
+                        </div>
+                        <div class="col-4">
+                            <div class="input-group">
+                                <span class="input-group-text mdi mdi-scale"></span>
+                                <input asp-for="Recipe.Ingredients[i].AltQuantity" class="form-control" placeholder="Alt. quantity" type="text">
+                            </div>
+                            <span asp-validation-for="Recipe.Ingredients[i].AltQuantity" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="btn-group-vertical btn-group-sm align-self-center">
+                        <button type="button" class="btn btn-outline-secondary"><i class="bi bi-arrow-up"></i></button>
+                        <button type="button" class="btn btn-outline-secondary"><i class="bi bi-arrow-down"></i></button>
+                    </div>
+                </div>
+            }
+        </fieldset>
+        <fieldset class="form-group mt-3">
+            <legend>Instructions</legend>
+            <textarea asp-for="Recipe.Instructions" rows="5" wrap="soft" type="text" class="form-control mt-1" placeholder="Instructions"></textarea>
+            <span asp-validation-for="Recipe.Instructions" class="text-danger"></span>
+        </fieldset>
+        <div class="col-12 mt-3">
+            <button type="submit" class="btn btn-outline-primary">Update</button>
+            <button type="button" class="btn btn-light">Cancel</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/lib/bootstrap-tags/tags.min.js" type="module"></script>
+    <script src="~/js/edit.js" type="module"></script>
+}

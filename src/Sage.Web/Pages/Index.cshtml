@@ -1,0 +1,39 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = Model.Recipe.Name;
+}
+
+<div class="d-flex justify-content-between">
+    <h1 class="display-4">@Model.Recipe.Name</h1>
+    <div class="btn-group btn-group-sm align-self-center" role="group" aria-label="button group">
+        <a asp-page="/Edit" asp-route-id="@Model.Recipe.Id" class="btn btn-outline-primary"><i class="bi bi-pencil-fill"></i></a>
+        <a asp-page="/Import" asp-route-id="@Model.Recipe.Id" class="btn btn-outline-primary"><i class="bi bi-arrow-clockwise"></i></a>
+        <a href="@Html.Raw(Model.Recipe.Link)" class="btn btn-outline-info"><i class="bi bi-box-arrow-up-right"></i></a>
+        <button type="button" class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
+    </div>
+</div>
+
+@if (Model.Recipe.Description is not null)
+{
+    <p class="lead">@Model.Recipe.Description</p>
+}
+
+<article class="row">
+    <section class="col-6">
+        <ul>
+            @foreach (var ingredient in Model.Recipe.Ingredients)
+            {
+                <li>@ingredient.Description</li>
+            }
+        </ul>
+    </section>
+    <section class="col-6">
+        <ol>
+            @foreach (var instruction in Model.Recipe.EnumerateInstructions())
+            {
+                <li>@instruction</li>
+            }
+        </ol>
+    </section>
+</article>

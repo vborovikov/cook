@@ -1,0 +1,195 @@
+namespace Sage.Web.Pages;
+
+using System.Data.Common;
+using System.Text.Json;
+using Dapper;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Pantry;
+using Spryer;
+
+public record RecipeFoodEdit(Guid Id, string Name);
+
+public record RecipeIngredientEdit
+{
+    private string[] foodIds;
+
+    public Guid Id { get; init; }
+    public string Description { get; set; }
+    public Measure? Number { get; set; }
+    public Measure? Quantity { get; set; }
+    public Measure? AltQuantity { get; set; }
+
+    // Foods...
+
+    public string[] FoodIds
+    {
+        get => this.foodIds ?? this.Foods.Select(f => f.Id.ToString()).ToArray();
+        set => this.foodIds = value;
+    }
+    public RecipeFoodEdit[] Foods { get; set; } = Array.Empty<RecipeFoodEdit>();
+    public MultiSelectList FoodList => new(this.Foods, nameof(RecipeFoodEdit.Id), nameof(RecipeFoodEdit.Name), this.FoodIds);
+}
+
+public record RecipeEdit
+{
+    public Guid Id { get; init; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public RecipeIngredientEdit[] Ingredients { get; set; } = Array.Empty<RecipeIngredientEdit>();
+    public string Instructions { get; set; }
+}
+
+[BindProperties]
+public class EditModel : PageModel
+{
+    private readonly DbDataSource db;
+
+    public EditModel(DbDataSource db)
+    {
+        this.db = db;
+    }
+
+    public RecipeEdit Recipe { get; set; }
+
+    public async Task OnGet(Guid id, CancellationToken cancellationToken)
+    {
+        await using var cnn = await this.db.OpenConnectionAsync(cancellationToken);
+        this.Recipe = JsonSerializer.Deserialize<RecipeEdit>(await cnn.ExecuteScalarAsync<string>(
+            """
+            select (
+                select r.Id, r.Name, r.Description, r.Instructions,
+                    json_query((
+                        select i.Id, i.Description,
+                            i.Number, i.Quantity, i.AltQuantity,
+                            json_query((
+                                select f.FoodId as Id, fs.Name
+                                from book.IngredientFoods f
+                                inner join book.Foods fs on fs.Id = f.FoodId
+                                where f.IngredientId = i.Id
+                                for json path
+                            )) as Foods
+                        from book.Ingredients i
+                        inner join book.RecipeIngredients ri on ri.IngredientId = i.Id
+                        where ri.RecipeId = r.Id
+                        order by ri.Turn
+                        for json path
+                    )) as Ingredients
+                from book.Recipes r
+                where r.Id = @RecipeId
+                for json path, without_array_wrapper
+            );
+            """, new { RecipeId = id }));
+    }
+
+    public async Task<IActionResult> OnGetFoods(Guid id, string name, CancellationToken cancellationToken)
+    {
+        await using var cnn = await this.db.OpenConnectionAsync(cancellationToken);
+        return Content(await cnn.ExecuteScalarAsync<string>(
+            """
+            select (
+                select f.Id, f.Name
+                from book.Foods f
+                where f.Name like '%' + @Name + '%'
+                for json path
+            );
+            """, new { Name = name.AsNVarChar(50) }), "application/json");
+    }
+
+    public async Task<IActionResult> OnPost(CancellationToken cancellationToken)
+    {
+        if (!this.ModelState.IsValid)
+        {
+            return Page();
+        }
+
+        await using var cnn = await this.db.OpenConnectionAsync(cancellationToken);
+        await using var trn = await cnn.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            // update recipe details
+            await cnn.ExecuteAsync(
+                """
+                update book.Recipes
+                set Name = @Name, Description = @Description, Instructions = @Instructions
+                where Id = @Id;
+                """,
+                new
+                {
+                    Id = this.Recipe.Id,
+                    Name = this.Recipe.Name.AsNVarChar(100),
+                    Description = this.Recipe.Description.AsNVarChar(500),
+                    Instructions = this.Recipe.Instructions.AsNVarChar(),
+                }, trn);
+
+            // update ingredients
+            foreach (var ingredient in this.Recipe.Ingredients)
+            {
+                // update an ingredient
+                await cnn.ExecuteAsync(
+                    """
+                    update book.Ingredients
+                    set Description = @Description,
+                        Number = @Number, NumberValue = @NumberValue, NumberUnit = @NumberUnit,
+                        Quantity = @Quantity, QuantityValue = @QuantityValue, QuantityUnit = @QuantityUnit,
+                        AltQuantity = @AltQuantity, AltQuantityValue = @AltQuantityValue, AltQuantityUnit = @AltQuantityUnit
+                    where Id = @Id;
+                    """,
+                    new
+                    {
+                        ingredient.Id,
+                        Description = ingredient.Description.AsNVarChar(100),
+                        ingredient.Number,
+                        NumberValue = ingredient.Number?.Value,
+                        NumberUnit = (DbEnum<MeasurementType>?)ingredient.Number?.Unit?.Type,
+                        ingredient.Quantity,
+                        QuantityValue = ingredient.Quantity?.Value,
+                        QuantityUnit = (DbEnum<MeasurementType>?)ingredient.Quantity?.Unit?.Type,
+                        ingredient.AltQuantity,
+                        AltQuantityValue = ingredient.AltQuantity?.Value,
+                        AltQuantityUnit = (DbEnum<MeasurementType>?)ingredient.AltQuantity?.Unit?.Type,
+                    }, trn);
+
+                // remove all food associations
+                await cnn.ExecuteAsync(
+                    """
+                    delete from book.IngredientFoods
+                    where IngredientId = @Id;
+                    """, new { ingredient.Id }, trn);
+
+                // update food associations
+                foreach (var foodIdStr in ingredient.FoodIds)
+                {
+                    if (!Guid.TryParse(foodIdStr, out var foodId))
+                    {
+                        // it's a new food
+                        foodId = await cnn.ExecuteScalarAsync<Guid>(
+                            """
+                            insert into book.Foods (Name, ShortName)
+                            output inserted.Id
+                            values (@Name, @ShortName);
+                            """, new { Name = foodIdStr.AsNVarChar(50), ShortName = foodIdStr.AsNVarChar(50) }, trn);
+                    }
+                    // update an association
+                    await cnn.ExecuteAsync(
+                        """
+                        insert into book.IngredientFoods (IngredientId, FoodId)
+                        values (@IngredientId, @FoodId);
+                        """, new { IngredientId = ingredient.Id, FoodId = foodId }, trn);
+                }
+            }
+
+            await trn.CommitAsync(cancellationToken);
+        }
+        catch (Exception x)
+        {
+            await trn.RollbackAsync(cancellationToken);
+            this.ModelState.AddModelError(String.Empty, x.Message);
+            return Page();
+        }
+
+        return RedirectToPage("Index", new { id = this.Recipe.Id });
+    }
+}

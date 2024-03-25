@@ -1,0 +1,23 @@
+﻿@page
+@model ImportModel
+@{
+    ViewData["Title"] = Model.RecipeId.HasValue ? "Update" : "Import";
+}
+
+<div class="bg-white p-4 shadow">
+    <form method="post">
+        <input asp-for="RecipeId" type="hidden">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+        <div class="form-group">
+            <label asp-for="Recipe">Recipe</label>
+            <textarea asp-for="Recipe" class="form-control mt-1" rows="12" wrap="soft" placeholder="Recipe"></textarea>
+            <span asp-validation-for="Recipe" class="text-danger"></span>
+        </div>
+        <div class="form-group mt-3">
+            <label asp-for="Source">Source</label>
+            <input asp-for="Source" type="url" class="form-control mt-1" placeholder="Source">
+            <span asp-validation-for="Source" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn btn-outline-primary mt-3">@ViewBag.Title</button>
+    </form>
+</div>

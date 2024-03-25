@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "library": "bootstrap@5.3.3",
+      "destination": "wwwroot/lib/bootstrap/",
+      "files": [
+        "js/bootstrap.bundle.min.js",
+        "js/bootstrap.bundle.min.js.map",
+        "scss/**"
+      ]
+    },
+    {
+      "library": "bootstrap-icons@1.11.3",
+      "destination": "wwwroot/lib/bootstrap-icons/",
+      "files": [
+        "font/fonts/bootstrap-icons.woff",
+        "font/fonts/bootstrap-icons.woff2",
+        "font/bootstrap-icons.min.css"
+      ]
+    },
+    {
+      "provider": "jsdelivr",
+      "library": "@mdi/font@7.4.47",
+      "destination": "wwwroot/lib/mdi/",
+      "files": [
+        "css/materialdesignicons.min.css",
+        "css/materialdesignicons.min.css.map",
+        "fonts/*"
+      ]
+    },
+    {
+      "provider": "unpkg",
+      "library": "bootstrap5-tags@1.7.1",
+      "destination": "wwwroot/lib/bootstrap-tags/",
+      "files": [
+        "tags.js",
+        "tags.min.js",
+        "tags.min.js.map"
+      ]
+    },
+    {
+      "provider": "unpkg",
+      "library": "aspnet-client-validation@0.9.5",
+      "destination": "wwwroot/lib/aspnet-client-validation/",
+      "files": [
+        "dist/aspnet-validation.min.js",
+        "dist/aspnet-validation.min.js.map"
+      ]
+    },
+    {
+      "library": "htmx@1.9.11",
+      "destination": "wwwroot/lib/htmx",
+      "files": [
+        "htmx.js",
+        "htmx.min.js"
+      ]
+    }
+  ]
+}
