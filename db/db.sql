@@ -10,7 +10,7 @@ end;
 if @@Error = 3702
    RaisError('Cannot delete the database because of the open connections.', 127, 127) with nowait, log;
 
-create database Cook collate SQL_Latin1_General_CP1_CI_AS;
+create database Cook collate Latin1_General_100_CI_AS;
 go
 
 use Cook;
