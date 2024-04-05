@@ -21,7 +21,7 @@ public class SearchModel : PageModel
         this.db = db;
     }
 
-    public IPage<RecipeInfo> Recipes { get; private set; }
+    public IPage<RecipeInfo> Recipes { get; private set; } = XPage.Empty<RecipeInfo>();
     public TimeSpan SearchDuration { get; private set; }
 
     public async Task OnGet([FromQuery]PageRequest page, CancellationToken cancellationToken = default)

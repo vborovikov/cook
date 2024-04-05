@@ -1,10 +1,5 @@
 ﻿namespace Sage.Web.Data;
 
-public record ConnectionStrings
-{
-    public string Sage { get; init; }
-}
-
 public static class PageModelExtensions
 {
     public static string ToPrettyFormat(this TimeSpan timeSpan)

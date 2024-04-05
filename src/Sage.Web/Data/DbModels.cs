@@ -1,8 +1,6 @@
 namespace Sage.Web.Data;
 
-using System.Data.Common;
 using Dapper;
-using Microsoft.Extensions.Options;
 using Relay.InteractionModel;
 using Spryer;
 
@@ -29,7 +27,7 @@ public record RecipeIngredient(Guid Id, string Description);
 
 public record Recipe(Guid Id, string Name, Uri Link, string Description, string Instructions) : RecipeInfo(Id, Name, Link, Description)
 {
-    public IEnumerable<RecipeIngredient> Ingredients { get; init; } = Array.Empty<RecipeIngredient>();
+    public IEnumerable<RecipeIngredient> Ingredients { get; init; } = [];
 
     public IEnumerable<string> EnumerateInstructions()
     {

@@ -18,7 +18,7 @@ static class Program
         var builder = WebApplication.CreateBuilder(args);
 
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-        builder.Services.AddScoped(sp => SqlClientFactory.Instance.CreateDataSource(connectionString));
+        builder.Services.AddSingleton(sp => SqlClientFactory.Instance.CreateDataSource(connectionString));
 
         builder.Services
             .AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
