@@ -24,7 +24,7 @@ static class Program
             .AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
             .AddDapperStores(options =>
             {
-                options.UseSqlServer();
+                options.UseSqlServer(dbSchema: "asp");
             })
             .AddDefaultUI()
             .AddDefaultTokenProviders();

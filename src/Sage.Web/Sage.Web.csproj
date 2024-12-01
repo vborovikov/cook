@@ -7,6 +7,10 @@
     <UserSecretsId>Sage</UserSecretsId>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <IdentitySqlScriptFile>..\..\db\migrations\dbup_01.sql</IdentitySqlScriptFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <Folder Include="wwwroot\lib\" />
     <None Include="compilerconfig.json" />
@@ -14,13 +18,13 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.35" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
-    <PackageReference Include="PantryLib" Version="0.1.0-beta" />
-    <PackageReference Include="RelayTk" Version="2.4.2" />
-    <PackageReference Include="Spryer" Version="0.9.5" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.3" />
-    <PackageReference Include="Spryer.AspNetCore.Identity" Version="0.2.0-beta" />
-    <PackageReference Include="Spryer.AspNetCore.Identity.SqlServer" Version="0.2.0-beta" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="PantryLib" Version="0.1.1" />
+    <PackageReference Include="RelayTk" Version="2.6.1" />
+    <PackageReference Include="Spryer" Version="0.9.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.11" />
+    <PackageReference Include="Spryer.AspNetCore.Identity" Version="0.2.1-beta" />
+    <PackageReference Include="Spryer.AspNetCore.Identity.SqlServer" Version="0.2.2-beta" />
   </ItemGroup>
 
   <ItemGroup>
