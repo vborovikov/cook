@@ -45,10 +45,12 @@ public record RecipeEdit
 public class EditModel : PageModel
 {
     private readonly DbDataSource db;
+    private readonly DbScriptMap sql;
 
-    public EditModel(DbDataSource db)
+    public EditModel(DbDataSource db, DbScriptMap sql)
     {
         this.db = db;
+        this.sql = sql;
     }
 
     public RecipeEdit Recipe { get; set; }
@@ -56,45 +58,17 @@ public class EditModel : PageModel
     public async Task OnGet(Guid id, CancellationToken cancellationToken)
     {
         await using var cnn = await this.db.OpenConnectionAsync(cancellationToken);
-        this.Recipe = JsonSerializer.Deserialize<RecipeEdit>(await cnn.ExecuteScalarAsync<string>(
-            """
-            select (
-                select r.Id, r.Name, r.Description, r.Instructions,
-                    json_query((
-                        select i.Id, i.Description,
-                            i.Number, i.Quantity, i.AltQuantity,
-                            json_query((
-                                select f.FoodId as Id, fs.Name
-                                from book.IngredientFoods f
-                                inner join book.Foods fs on fs.Id = f.FoodId
-                                where f.IngredientId = i.Id
-                                for json path
-                            )) as Foods
-                        from book.Ingredients i
-                        inner join book.RecipeIngredients ri on ri.IngredientId = i.Id
-                        where ri.RecipeId = r.Id
-                        order by ri.Turn
-                        for json path
-                    )) as Ingredients
-                from book.Recipes r
-                where r.Id = @RecipeId
-                for json path, without_array_wrapper
-            );
-            """, new { RecipeId = id }));
+        this.Recipe = JsonSerializer.Deserialize<RecipeEdit>(
+            await cnn.ExecuteScalarAsync<string>(this.sql["EditRecipeById"], new { RecipeId = id }));
     }
 
     public async Task<IActionResult> OnGetFoods(Guid id, string name, CancellationToken cancellationToken)
     {
         await using var cnn = await this.db.OpenConnectionAsync(cancellationToken);
-        return Content(await cnn.ExecuteScalarAsync<string>(
-            """
-            select (
-                select f.Id, f.Name
-                from book.Foods f
-                where f.Name like '%' + @Name + '%'
-                for json path
-            );
-            """, new { Name = name.AsNVarChar(50) }), "application/json");
+        return Content(
+            await cnn.ExecuteScalarAsync<string>(
+                this.sql["GetFoodsByName"], new { Name = name.AsNVarChar(50) }),
+            "application/json");
     }
 
     public async Task<IActionResult> OnPost(CancellationToken cancellationToken)
@@ -111,11 +85,7 @@ public class EditModel : PageModel
         {
             // update recipe details
             await cnn.ExecuteAsync(
-                """
-                update book.Recipes
-                set Name = @Name, Description = @Description, Instructions = @Instructions
-                where Id = @Id;
-                """,
+                this.sql["UpdateRecipeDetails"],
                 new
                 {
                     Id = this.Recipe.Id,
@@ -129,14 +99,7 @@ public class EditModel : PageModel
             {
                 // update an ingredient
                 await cnn.ExecuteAsync(
-                    """
-                    update book.Ingredients
-                    set Description = @Description,
-                        Number = @Number, NumberValue = @NumberValue, NumberUnit = @NumberUnit,
-                        Quantity = @Quantity, QuantityValue = @QuantityValue, QuantityUnit = @QuantityUnit,
-                        AltQuantity = @AltQuantity, AltQuantityValue = @AltQuantityValue, AltQuantityUnit = @AltQuantityUnit
-                    where Id = @Id;
-                    """,
+                    this.sql["UpdateIngredient"],
                     new
                     {
                         ingredient.Id,
@@ -153,11 +116,7 @@ public class EditModel : PageModel
                     }, trn);
 
                 // remove all food associations
-                await cnn.ExecuteAsync(
-                    """
-                    delete from book.IngredientFoods
-                    where IngredientId = @Id;
-                    """, new { ingredient.Id }, trn);
+                await cnn.ExecuteAsync(this.sql["DeleteIngredientFoods"], new { ingredient.Id }, trn);
 
                 // update food associations
                 foreach (var foodIdStr in ingredient.FoodIds)
@@ -165,19 +124,12 @@ public class EditModel : PageModel
                     if (!Guid.TryParse(foodIdStr, out var foodId))
                     {
                         // it's a new food
-                        foodId = await cnn.ExecuteScalarAsync<Guid>(
-                            """
-                            insert into book.Foods (Name, ShortName)
-                            output inserted.Id
-                            values (@Name, @ShortName);
-                            """, new { Name = foodIdStr.AsNVarChar(50), ShortName = foodIdStr.AsNVarChar(50) }, trn);
+                        foodId = await cnn.ExecuteScalarAsync<Guid>(this.sql["AddFood"],
+                            new { Name = foodIdStr.AsNVarChar(50), ShortName = foodIdStr.AsNVarChar(50) }, trn);
                     }
                     // update an association
-                    await cnn.ExecuteAsync(
-                        """
-                        insert into book.IngredientFoods (IngredientId, FoodId)
-                        values (@IngredientId, @FoodId);
-                        """, new { IngredientId = ingredient.Id, FoodId = foodId }, trn);
+                    await cnn.ExecuteAsync(this.sql["ConnectIngredientFood"],
+                        new { IngredientId = ingredient.Id, FoodId = foodId }, trn);
                 }
             }
 

@@ -3,6 +3,7 @@ namespace Sage.Web;
 using Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
+using Spryer;
 using Spryer.AspNetCore.Identity;
 using Spryer.AspNetCore.Identity.SqlServer;
 
@@ -19,6 +20,7 @@ static class Program
 
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
         builder.Services.AddSingleton(sp => SqlClientFactory.Instance.CreateDataSource(connectionString));
+        builder.Services.AddSingleton(sp => DbScriptMap.Load());
 
         builder.Services
             .AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)

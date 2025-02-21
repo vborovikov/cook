@@ -5,12 +5,11 @@ using System.Data.Common;
 using System.Globalization;
 using System.Threading;
 using Cook.Book;
-using Pantry;
 using Dapper;
-using Data;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Pantry;
 using Spryer;
 
 public record ImportRecipe
@@ -23,10 +22,12 @@ public record ImportRecipe
 public class ImportModel : PageModel
 {
     private readonly DbDataSource db;
+    private readonly DbScriptMap sql;
 
-    public ImportModel(DbDataSource db)
+    public ImportModel(DbDataSource db, DbScriptMap sql)
     {
         this.db = db;
+        this.sql = sql;
     }
 
     public Guid? RecipeId { get; set; }
@@ -42,12 +43,7 @@ public class ImportModel : PageModel
             this.RecipeId = id.Value;
 
             await using var cnn = await this.db.OpenConnectionAsync(cancellationToken);
-            var info = await cnn.QueryFirstAsync<ImportRecipe>(
-                """
-                select r.Content as Recipe, r.Link as Source
-                from book.RecipeSources r
-                where r.RecipeId = @RecipeId;
-                """, new { RecipeId = id.Value });
+            var info = await cnn.QueryFirstAsync<ImportRecipe>(this.sql["GetImportedRecipeById"], new { RecipeId = id.Value });
 
             this.Recipe = info.Recipe;
             this.Source = info.Source;
@@ -97,14 +93,7 @@ public class ImportModel : PageModel
     private async Task ImportAsync(Guid recipeId, BasicRecipe recipe, DbTransaction tx)
     {
         // store the recipe info
-        await tx.Connection.ExecuteAsync(
-            """
-            insert into book.Recipes (Id, Name, Description, Instructions, IsParsed)
-            values (@Id, @Name, @Description, @Instructions, @IsParsed);
-                
-            insert into book.RecipeSources (RecipeId, Content, ContentType, Link)
-            values (@Id, @Content, 'text', @Link);
-            """,
+        await tx.Connection.ExecuteAsync(this.sql["ImportRecipe"],
             new
             {
                 Id = recipeId,
@@ -124,24 +113,10 @@ public class ImportModel : PageModel
     private async Task UpdateAsync(Guid recipeId, BasicRecipe recipe, DbTransaction tx)
     {
         // discard ingredients
-        await tx.Connection.ExecuteAsync(
-            """
-            delete i from book.Ingredients i
-            inner join book.RecipeIngredients ri on ri.IngredientId = i.Id
-            where ri.RecipeId = @RecipeId;
-            """, new { RecipeId = recipeId }, tx);
+        await tx.Connection.ExecuteAsync(this.sql["DiscardIngredients"], new { RecipeId = recipeId }, tx);
 
         // update recipe
-        await tx.Connection.ExecuteAsync(
-            """
-            update book.Recipes
-            set Name = @Name, Description = @Description, Instructions = @Instructions, IsParsed = @IsParsed
-            where Id = @RecipeId;
-                
-            update book.RecipeSources
-            set Content = @Content, ContentType = 'text', Link = @Link
-            where RecipeId = @RecipeId;
-            """,
+        await tx.Connection.ExecuteAsync(this.sql["UpdateImportedRecipe"],
             new
             {
                 RecipeId = recipeId,
@@ -152,30 +127,19 @@ public class ImportModel : PageModel
                 Content = recipe.Content.AsNVarChar(),
                 Link = new Uri(this.Source),
             }, tx);
-        
+
         // insert ingredients
         await StoreIngredientsAsync(recipeId, recipe.Ingredients, tx);
     }
 
-    private static async Task StoreIngredientsAsync(Guid recipeId, BasicIngredient[] ingredients, DbTransaction tx)
+    private async Task StoreIngredientsAsync(Guid recipeId, BasicIngredient[] ingredients, DbTransaction tx)
     {
         var recipeIngredientIds = new List<Guid>();
         for (var i = 0; i != ingredients.Length; ++i)
         {
             var ingredient = ingredients[i];
             // insert ingredient
-            var ingredientId = await tx.Connection.ExecuteScalarAsync<Guid>(
-                """
-                insert into book.Ingredients (Description,
-                    Number, NumberValue, NumberUnit,
-                    Quantity, QuantityValue, QuantityUnit,
-                    AltQuantity, AltQuantityValue, AltQuantityUnit)
-                output inserted.Id
-                values (@Description,
-                    @Number, @NumberValue, @NumberUnit,
-                    @Quantity, @QuantityValue, @QuantityUnit,
-                    @AltQuantity, @AltQuantityValue, @AltQuantityUnit);
-                """,
+            var ingredientId = await tx.Connection.ExecuteScalarAsync<Guid>(this.sql["StoreIngredients"],
                 new
                 {
                     Description = ingredient.Description.AsNVarChar(100),
@@ -198,11 +162,8 @@ public class ImportModel : PageModel
         var step = Byte.MaxValue / ingredients.Length;
         foreach (var recipeIngredientId in recipeIngredientIds.Distinct())
         {
-            await tx.Connection.ExecuteAsync(
-                """
-                insert into book.RecipeIngredients (RecipeId, IngredientId, Turn)
-                values (@RecipeId, @IngredientId, @Turn);
-                """, new { RecipeId = recipeId, IngredientId = recipeIngredientId, Turn = ++index * step }, tx);
+            await tx.Connection.ExecuteAsync(this.sql["StoreRecipeIngredients"],
+                new { RecipeId = recipeId, IngredientId = recipeIngredientId, Turn = ++index * step }, tx);
         }
     }
 }
