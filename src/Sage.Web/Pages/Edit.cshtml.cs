@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Pantry;
+using Sage.Web.Data;
 using Spryer;
 
 public record RecipeFoodEdit(Guid Id, string Name);
@@ -58,16 +59,14 @@ public class EditModel : PageModel
     public async Task OnGet(Guid id, CancellationToken cancellationToken)
     {
         await using var cnn = await this.db.OpenConnectionAsync(cancellationToken);
-        this.Recipe = JsonSerializer.Deserialize<RecipeEdit>(
-            await cnn.ExecuteScalarAsync<string>(this.sql["EditRecipeById"], new { RecipeId = id }));
+        this.Recipe = await cnn.EditRecipeByIdAsync<RecipeEdit>(id);
     }
 
     public async Task<IActionResult> OnGetFoods(Guid id, string name, CancellationToken cancellationToken)
     {
         await using var cnn = await this.db.OpenConnectionAsync(cancellationToken);
         return Content(
-            await cnn.ExecuteScalarAsync<string>(
-                this.sql["GetFoodsByName"], new { Name = name.AsNVarChar(50) }),
+            await cnn.GetFoodsByNameAsync<string>(name),
             "application/json");
     }
 

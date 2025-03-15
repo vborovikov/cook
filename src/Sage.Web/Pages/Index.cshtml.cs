@@ -23,7 +23,6 @@ public class IndexModel : PageModel
     public async Task OnGet(Guid? id = default, CancellationToken cancellationToken = default)
     {
         await using var cnn = await this.db.OpenConnectionAsync(cancellationToken);
-        this.Recipe = JsonSerializer.Deserialize<Recipe>(
-            await cnn.ExecuteScalarAsync<string>(this.sql["GetRecipeById"], new { RecipeId = id }));
+        this.Recipe = await cnn.GetRecipeByIdAsync<Recipe>(id);
     }
 }

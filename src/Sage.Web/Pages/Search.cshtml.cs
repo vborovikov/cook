@@ -37,11 +37,11 @@ public class SearchModel : PageModel
         prms.Add("TopN", XPage.AvailablePageSizes[^1] * 7, DbType.Int32, ParameterDirection.Input);
 
         var recipes =
-            await cnn.QueryAsync<RecipeInfo>(
+            await
 #if HAVE_FULLTEXT
-                this.sql["SearchRecipesFullText"],
+                cnn.SearchRecipesFullTextAsync<RecipeInfo>(
 #else
-                this.sql["SearchRecipes"],
+                cnn.SearchRecipesAsync<RecipeInfo>(
 #endif
                 prms, commandTimeout: 300);
         this.Recipes = XPage.From(recipes, prms.Get<int?>("TotalCount") ?? 0, prms.Get<int?>("FilterCount") ?? 0, page);
