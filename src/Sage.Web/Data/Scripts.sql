@@ -142,7 +142,7 @@ values (@Name, @ShortName);
 insert into book.IngredientFoods (IngredientId, FoodId)
 values (@IngredientId, @FoodId);
 
---@query SearchRecipesFullText(@Parameters object)
+--@query SearchRecipesFullText(@ParamObject object)
 select @TotalCount = count(r.Id)
 from book.Recipes r;
 
@@ -157,7 +157,7 @@ inner join freetexttable(book.Recipes, Name, @Search, @TopN) ft on ft.[Key] = r.
 order by ft.Rank desc, len(r.Instructions) desc
 offset @SkipCount rows fetch next @TakeCount rows only;
 
---@query SearchRecipes(@Parameters object)
+--@query SearchRecipes(@paramObject object)
 select @TotalCount = count(r.Id)
 from book.Recipes r;
 
